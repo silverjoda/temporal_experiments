@@ -1,6 +1,7 @@
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.autograd as ag
 
 import seaborn as sns
 import numpy as np
@@ -59,7 +60,7 @@ def examine_cell(net, in_dim, out_dim, hidden_dim, seq_len):
     seq = T.rand(1, seq_len, in_dim)
     labels = T.rand(1, seq_len, out_dim)
 
-    h = None
+    h = T.zeros((1,hidden_dim))
     outputs = []
     hiddens = [h]
     for i in range(seq.shape[1]):
@@ -78,24 +79,62 @@ def examine_cell(net, in_dim, out_dim, hidden_dim, seq_len):
     print("Labels: ", labels)
     print("Outputs: ", outputs_tensor)
 
-    # print("fc_emb weight", net.fc_emb.weight)
-    # print("fc_emb weight grad", net.fc_emb.weight.grad)
-    # print("fc_emb bias", net.fc_emb.bias)
-    # print("fc_emb bias grad", net.fc_emb.bias.grad)
+    print("fc_emb weight", net.fc_emb.weight)
+    print("fc_emb weight grad", net.fc_emb.weight.grad)
+    print("fc_emb bias", net.fc_emb.bias)
+    print("fc_emb bias grad", net.fc_emb.bias.grad)
 
     # print("hh weight", net.rnn_cell.weight_hh.data)
     # print("hh weight grad", net.rnn_cell.weight_hh.grad)
     # print("hh bias", net.rnn_cell.bias_hh.data)
     # print("hh bias grad", net.rnn_cell.bias_hh.grad)
 
-    print("ih weight", net.rnn_cell.weight_ih.data)
-    print("ih weight grad", net.rnn_cell.weight_ih.grad)
-    print("ih bias", net.rnn_cell.bias_ih.data)
-    print("ih bias grad", net.rnn_cell.bias_ih.grad)
+    # print("ih weight", net.rnn_cell.weight_ih.data)
+    # print("ih weight grad", net.rnn_cell.weight_ih.grad)
+    # print("ih bias", net.rnn_cell.bias_ih.data)
+    # print("ih bias grad", net.rnn_cell.bias_ih.grad)
+
+    print("\n")
 
     net.zero_grad()
 
-    # Calculate gradients manually and compare
+
+def examine_cell_manual(net, in_dim, out_dim, hidden_dim, seq_len):
+    T.manual_seed(1337)
+    seq = T.rand(1, seq_len, in_dim)
+    labels = T.rand(1, seq_len, out_dim)
+
+    all_outputs = []
+    for i in range(seq.shape[1]):
+        h = T.zeros((1, hidden_dim))
+        outputs = []
+        hiddens = [h]
+        for j in range(i + 1):
+            x = seq[0, j:j+1, :]
+            y, h = net.forward(x, h)
+            outputs.append(y)
+            hiddens.append(h)
+        del hiddens[-1]
+        last_output = outputs[-1]
+        all_outputs.append(last_output)
+
+        #
+        lossfun = nn.MSELoss()
+        loss = lossfun(last_output, labels[:, i, :])
+        loss.backward()
+
+
+    print("Sequence: ", seq)
+    print("Labels: ", labels)
+    print("Outputs: ", T.cat(all_outputs))
+
+    print("fc_emb weight", net.fc_emb.weight)
+    print("fc_emb weight grad", net.fc_emb.weight.grad / 15.)
+    print("fc_emb bias", net.fc_emb.bias)
+    print("fc_emb bias grad", net.fc_emb.bias.grad / 15.)
+    print("\n")
+
+    net.zero_grad()
 
 
 def examine_full(net, in_dim, out_dim, hidden_dim, seq_len):
@@ -132,15 +171,18 @@ def examine_full(net, in_dim, out_dim, hidden_dim, seq_len):
 
 def main():
 
-    in_dim = 3
+    in_dim = 2
     out_dim = 1
-    hidden_dim = 3
+    hidden_dim = 2
     seq_len = 5
 
     net = Net(in_dim, out_dim, hidden_dim)
 
-    print("Examine cell:")
+    print("============ Examine cell ============")
     examine_cell(net, in_dim, out_dim, hidden_dim, seq_len)
+
+    print("============ Examine cell manual ============")
+    examine_cell_manual(net, in_dim, out_dim, hidden_dim, seq_len)
 
     # print("Examine full:")
     # examine_full(net, in_dim, out_dim, hidden_dim, seq_len)
