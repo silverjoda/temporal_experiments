@@ -123,15 +123,14 @@ def examine_cell_manual(net, in_dim, out_dim, hidden_dim, seq_len):
         loss = lossfun(last_output, labels[:, i, :])
         loss.backward()
 
-
     print("Sequence: ", seq)
     print("Labels: ", labels)
     print("Outputs: ", T.cat(all_outputs))
 
     print("fc_emb weight", net.fc_emb.weight)
-    print("fc_emb weight grad", net.fc_emb.weight.grad / 15.)
+    print("fc_emb weight grad", net.fc_emb.weight.grad / seq_len)
     print("fc_emb bias", net.fc_emb.bias)
-    print("fc_emb bias grad", net.fc_emb.bias.grad / 15.)
+    print("fc_emb bias grad", net.fc_emb.bias.grad / seq_len)
     print("\n")
 
     net.zero_grad()
